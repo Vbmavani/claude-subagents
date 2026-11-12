@@ -1,0 +1,16 @@
+{
+  "name": "quicknotes-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "INTENTIONALLY VULNERABLE demo app. Do not deploy. Exists only to test security-auditor.",
+  "main": "server.js",
+  "dependencies": {
+    "express": "4.16.0",
+    "lodash": "4.17.11",
+    "jsonwebtoken": "*",
+    "request": "^2.88.0",
+    "left-pad": "1.3.0",
+    "cors": "^2.8.5",
+    "sqlite3": "^5.1.6"
+  }
+}
