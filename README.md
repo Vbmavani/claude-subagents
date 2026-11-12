@@ -8,6 +8,11 @@ to test them on. Built as a hands-on way to learn how sub agents work.
 | `plan-roaster` | Haiku | Read, Grep, Glob | Adversarial review of a plan, with no memory of your conversation |
 | `security-auditor` | Sonnet | Read, Grep, Glob | Audits dependencies, auth, input validation, secrets |
 
+There is also a three-persona review panel (`panel-beginner`,
+`panel-senior-engineer`, `panel-skeptical-buyer`) that runs in parallel on any
+file or folder with `/persona-panel <path>`. See
+[docs/PERSONA-PANEL.md](docs/PERSONA-PANEL.md).
+
 ## Why sub agents
 
 - **Clean context.** Big file reads happen in the agent's window. Your main
@@ -24,7 +29,10 @@ to test them on. Built as a hands-on way to learn how sub agents work.
 ```
 .claude/agents/plan-roaster.md      agent definition (YAML front matter + prompt)
 .claude/agents/security-auditor.md
+.claude/agents/panel-*.md           three persona reviewers
+.claude/commands/persona-panel.md   /persona-panel slash command
 demo/plan.md                        a plan full of holes
+demo/landing-page.md                an overhyped product page
 demo/app/                           a tiny Express app full of vulnerabilities
 docs/TESTING.md                     step-by-step experiments
 ```
