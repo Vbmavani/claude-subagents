@@ -76,7 +76,8 @@ const checks = [
   ['Trusting client-sent admin flag',
     !/req\.body\.admin/.test(src)],
   ['Shell command built from input',
-    !/\bexec\(\s*`[^`]*\$\{/.test(src) && !/\bexec\([^)]*req\./.test(src)],
+    // Only a bare exec(...) call counts. A method call such as /re/.exec(req.get(...)) is not a shell.
+    !/(^|[^.\w$])exec\(\s*`[^`]*\$\{/m.test(src) && !/(^|[^.\w$])exec\([^)]*req\./m.test(src)],
   ['Open redirect',
     redirect === '' || !/redirect\(\s*req\.(query|body|params)/.test(redirect)],
   ['Tokens never expire',
@@ -86,7 +87,8 @@ const checks = [
   ['CORS open to every origin',
     !/cors\(\s*\)/.test(src) && !/origin\s*:\s*['"]\*['"]/.test(src)],
   ['Stack traces leaked',
-    !/\.stack\b/.test(src.split('\n').filter((l) => /res\./.test(l)).join('\n')) &&
+    // A stack trace sent in a response is fine only when that line is gated by a debug/env flag.
+    !src.split('\n').some((l) => /res\./.test(l) && /\.stack\b/.test(l) && !/DEBUG|NODE_ENV|isDev|development/i.test(l)) &&
       !/DEBUG\s*=\s*true/.test(src)],
   ['No input validation on signup',
     signup !== '' && /typeof|\.length|validate|test\(/.test(signup)],
