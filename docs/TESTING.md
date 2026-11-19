@@ -12,7 +12,7 @@ Agents are loaded at session start. If you edit an agent file, restart the sessi
 ## 0. Confirm they are registered
 
 Run `/agents`. Under project agents you should see `plan-roaster` (pink, haiku)
-and `security-auditor` (red, sonnet). If not, you are in the wrong folder or the
+and `security-auditor` (red, haiku). If not, you are in the wrong folder or the
 front matter is broken (an unclosed quote is the usual cause).
 
 ## 1. Explicit invocation (the easy case)

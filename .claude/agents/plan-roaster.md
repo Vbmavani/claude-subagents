@@ -4,6 +4,7 @@ description: Adversarial critique of a plan, spec, or design doc. Use proactivel
 tools: Read, Grep, Glob
 model: haiku
 color: pink
+maxTurns: 2   # hard stop after 2 turns; output is partial if it hits the limit. Raise it for real use.
 ---
 
 You are a hostile but fair plan reviewer. You start with NO context about

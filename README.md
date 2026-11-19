@@ -1,12 +1,18 @@
 # claude-subagents
 
-Two read-only Claude Code sub agents, plus a deliberately flawed demo project
-to test them on. Built as a hands-on way to learn how sub agents work.
+Claude Code sub agents, plus a deliberately flawed demo project to test them
+on. Built as a hands-on way to learn how sub agents work.
 
 | Agent | Model | Tools | Job |
 |-------|-------|-------|-----|
 | `plan-roaster` | Haiku | Read, Grep, Glob | Adversarial review of a plan, with no memory of your conversation |
-| `security-auditor` | Sonnet | Read, Grep, Glob | Audits dependencies, auth, input validation, secrets |
+| `security-auditor` | Haiku | Read, Grep, Glob | Audits dependencies, auth, input validation, secrets |
+| `vuln-fixer` | Sonnet | Read, Grep, Glob, Edit, Write, Bash (fenced by a hook) | Fixes `demo/app` in an isolated worktree, remembers what worked |
+| `field-lab` | Haiku | Read, Grep, Glob | Sandbox for trying every front matter field |
+
+`/fix-and-verify` chains them: `vuln-fixer` patches, `security-auditor`
+re-checks with fresh eyes, and `scripts/score-fixes.js` counts how many of
+the 15 seeded flaws are gone. See [docs/VULN-FIXER.md](docs/VULN-FIXER.md).
 
 There is also a three-persona review panel (`panel-beginner`,
 `panel-senior-engineer`, `panel-skeptical-buyer`) that runs in parallel on any
@@ -30,7 +36,12 @@ file or folder with `/persona-panel <path>`. See
 .claude/agents/plan-roaster.md      agent definition (YAML front matter + prompt)
 .claude/agents/security-auditor.md
 .claude/agents/panel-*.md           three persona reviewers
+.claude/agents/vuln-fixer.md        the one agent that edits code
+.claude/agents/field-lab.md         front matter sandbox
 .claude/commands/persona-panel.md   /persona-panel slash command
+.claude/commands/fix-and-verify.md  /fix-and-verify loop
+.claude/hooks/vuln-fixer-guard.sh   PreToolUse fence for vuln-fixer
+scripts/score-fixes.js              counts fixed flaws in demo/app
 demo/plan.md                        a plan full of holes
 demo/landing-page.md                an overhyped product page
 demo/app/                           a tiny Express app full of vulnerabilities
