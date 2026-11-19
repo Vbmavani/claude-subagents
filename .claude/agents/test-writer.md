@@ -6,7 +6,9 @@ model: sonnet                                  # picking edge cases is judgment.
 effort: medium
 maxTurns: 30                                   # write, run, fix is a loop. The cap stops it spinning.
 color: green
-isolation: worktree                            # tests land on a throwaway branch you review. It needs the files committed first.
+# isolation: worktree   Off on purpose. A worktree is built from main, not from your branch, so it
+#                       cannot see demo/textkit until that is merged. Claude Code also refuses writes
+#                       outside the worktree. The hook below limits writes to one new test file instead.
 permissionMode: acceptEdits
 skills:
   - test-quality                               # the rules for good tests. The grader lives in the same skill folder.
@@ -16,8 +18,7 @@ hooks:
       hooks:
         - type: command
           command: 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/test-writer-guard.sh"'
-# No memory on purpose. Project memory is written inside the worktree and is lost with it,
-# and the rules it would hold are already in the skill.
+# No memory on purpose: the rules it would hold are already in the skill.
 ---
 
 You write unit tests. Your reader is a developer who wants to trust the code

@@ -14,7 +14,7 @@ broken copies of the code they catch.
 | 4 | What may it touch? | It reads `demo/textkit/`, writes only `demo/textkit/*.test.js`, and runs only its own tests. A hook enforces this. |
 | 5 | What should it remember? | Nothing. Project memory would be written inside the worktree and lost with it, and the rules already live in the skill. |
 | 6 | How will I know it worked? | `mutation-score.js` runs the tests against 10 broken copies. The weak example scores 1 of 10 and the strong one 10 of 10. |
-| 7 | How does it run, and what does it cost? | Sonnet, medium effort, 30 turns, in its own worktree. You review the branch. |
+| 7 | How does it run, and what does it cost? | Sonnet, medium effort, 30 turns. It writes into your checkout, so you review `git status` and the one new file. |
 
 ## Files
 
@@ -29,19 +29,22 @@ broken copies of the code they catch.
 
 ## Run it
 
-1. **Commit first.** The agent runs in a worktree, which is built from your
-   commits. Uncommitted files will not be in it.
-2. Restart Claude Code in this folder so it loads the agent. Check `/agents`.
+1. **Know the worktree rule.** A worktree is built from `main`, not from your
+   current branch, and Claude Code refuses writes outside it. An isolated agent
+   cannot see files that exist only on a feature branch. That is why this agent
+   has `isolation: worktree` turned off.
+2. Restart Claude Code in this folder so it loads the agent. Agent files are
+   read at session start, so edits made mid-session do not apply. Check `/agents`.
 3. Ask:
 
 ```
 Use the test-writer sub agent to write tests for demo/textkit
 ```
 
-4. Grade the result. The agent reports its worktree path.
+4. Grade the result.
 
 ```bash
-node .claude/skills/test-quality/mutation-score.js <worktree path>/demo/textkit
+node .claude/skills/test-quality/mutation-score.js demo/textkit
 ```
 
 5. Read the diff before keeping anything.
@@ -74,6 +77,20 @@ a throwaway worktree.
 Tested: the grader on the weak and strong examples (1 of 10, then 10 of 10),
 and the hook on 27 sample calls (8 allowed, 19 blocked as intended).
 
-Not tested: a live run of the agent. Not verified: that the worktree
-contains the files, which depends on how Claude Code branches it. If
-`demo/textkit` is missing inside the worktree, commit and try again.
+Live runs on 2026-11-19, in order:
+1. Isolated worktree: wrote nothing. The worktree was built from `main`, which
+   has no `demo/textkit`. The agent said so instead of guessing.
+2. Told to use the main checkout by absolute path: wrote nothing. Claude Code
+   rejected the write because the agent was isolated to its worktree.
+3. Same setup as run 1, after turning isolation off in the file mid-session:
+   the edit did not apply (agent files load at session start), so it was still
+   isolated. It wrote `textkit.test.js` into its worktree anyway. Graded in a
+   scratch folder next to the real `textkit.js`: 55 tests pass on the correct
+   code and catch 10 of 10 planted bugs.
+
+Things the runs showed:
+- The agent counted 63 tests by reading its file. The run counted 55. Agents
+  cannot count their own output, so let a script do it.
+- It reported no bugs and listed what it chose not to test, as instructed.
+- The first run that actually ran with isolation off, in your checkout, has
+  not happened yet. Restart Claude Code, then run it once to confirm.
