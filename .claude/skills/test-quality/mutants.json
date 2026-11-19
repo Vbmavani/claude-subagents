@@ -1,0 +1,12 @@
+[
+  { "name": "slugify keeps repeated dashes", "find": ".replace(/[^a-z0-9]+/g, '-')\n    .replace(/^-+|-+$/g, '');", "replace": ".replace(/[^a-z0-9]/g, '-')\n    .replace(/^-+|-+$/g, '');" },
+  { "name": "slugify keeps edge dashes", "find": ".replace(/[^a-z0-9]+/g, '-')\n    .replace(/^-+|-+$/g, '');", "replace": ".replace(/[^a-z0-9]+/g, '-');" },
+  { "name": "truncate cuts text that exactly fits", "find": "if (input.length <= max) return input;", "replace": "if (input.length < max) return input;" },
+  { "name": "truncate result is one character too long", "find": "input.slice(0, max - ellipsis.length) + ellipsis", "replace": "input.slice(0, max - ellipsis.length + 1) + ellipsis" },
+  { "name": "truncate ignores a tiny max", "find": "if (max <= ellipsis.length) return ellipsis.slice(0, max);", "replace": "if (max <= ellipsis.length) return ellipsis;" },
+  { "name": "wordCount says empty text has 1 word", "find": "trimmed === '' ? 0 :", "replace": "trimmed === '' ? 1 :" },
+  { "name": "chunk drops the short last group", "find": "for (let i = 0; i < items.length; i += size)", "replace": "for (let i = 0; i + size <= items.length; i += size)" },
+  { "name": "clamp accepts min greater than max", "find": "if (min > max) throw new RangeError('min must not exceed max');", "replace": "" },
+  { "name": "parseDuration counts a minute as 600 seconds", "find": "m: 60,", "replace": "m: 600," },
+  { "name": "parseDuration returns 0 for invalid text", "find": "if (!/^(\\d+[hms])+$/.test(text)) return null;", "replace": "if (!/^(\\d+[hms])+$/.test(text)) return 0;" }
+]
