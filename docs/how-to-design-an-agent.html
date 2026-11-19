@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to design an agent</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+/* Layout concept: one reading column. The seven questions run down the page in order, the diagram sits where question 2 is answered. */
+:root {
+  --paper: #f3f1ec; --paper-2: #e9e5db; --ink: #1a1c22; --muted: #5c616e;
+  --rule: #d7d3c8; --line: rgba(26,28,34,.35);
+  --accent: #9c6b16; --accent-tint: rgba(156,107,22,.08); --link: #2f6f5e;
+  --f-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  --f-body: 'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #101217; --paper-2: #1a1d24; --ink: #e9ebef; --muted: #9ca2ae;
+  --rule: rgba(215,211,200,.25); --line: rgba(233,235,239,.35);
+  --accent: #d9a23f; --accent-tint: rgba(217,162,63,.12); --link: #4cc99a; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --paper: #101217; --paper-2: #1a1d24; --ink: #e9ebef; --muted: #9ca2ae;
+  --rule: rgba(215,211,200,.25); --line: rgba(233,235,239,.35);
+  --accent: #d9a23f; --accent-tint: rgba(217,162,63,.12); --link: #4cc99a; color-scheme: dark; }
+
+body { background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.65; }
+.wrap { max-width: 780px; margin: 0 auto; padding-block: 56px 80px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.eyebrow { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(2.2rem, 6vw, 3.4rem); line-height: 1.05; margin: 0 0 20px; text-wrap: balance; }
+h2 { font-family: var(--f-display); font-weight: 400; font-size: 1.9rem; line-height: 1.15; margin: 0 0 14px; text-wrap: balance; }
+p { margin: 0 0 14px; max-width: 65ch; }
+.lede { font-size: 1.15rem; max-width: 58ch; }
+.muted { color: var(--muted); }
+section { border-top: 1px solid var(--rule); padding-top: 36px; margin-top: 48px; }
+code { font-family: var(--f-mono); font-size: .86em; background: var(--paper-2); padding: 1px 6px; border-radius: 3px; overflow-wrap: anywhere; }
+pre { font-family: var(--f-mono); font-size: 12.5px; line-height: 1.55; background: var(--paper-2); border: 1px solid var(--rule); border-radius: 6px; padding: 16px 18px; overflow-x: auto; margin: 16px 0; }
+pre code { background: none; padding: 0; font-size: inherit; }
+
+.finds { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 14px; }
+.finds li { padding-left: 16px; border-left: 2px solid var(--rule); max-width: 65ch; }
+.finds li.key { border-left-color: var(--accent); }
+.finds b { font-weight: 600; }
+
+ol.q { list-style: none; counter-reset: q; padding: 0; margin: 20px 0 0; display: grid; gap: 22px; }
+ol.q > li { counter-increment: q; display: grid; grid-template-columns: 2.4rem minmax(0, 1fr); column-gap: 14px; }
+ol.q > li::before { content: counter(q); font-family: var(--f-display); font-size: 2rem; line-height: 1; color: var(--accent); }
+ol.q h3 { font-size: 1.02rem; font-weight: 600; margin: 0 0 4px; }
+ol.q p { margin: 0 0 6px; color: var(--muted); font-size: .96rem; }
+.goes { font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; color: var(--muted); }
+.goes span { color: var(--ink); }
+
+.diagram { border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); margin: 20px 0 12px; overflow-x: auto; }
+.diagram svg { display: block; min-width: 660px; width: 100%; height: auto; }
+.shape { fill: var(--paper); stroke: var(--line); stroke-width: 1; }
+.shape.focal { stroke: var(--accent); fill: var(--accent-tint); stroke-width: 1.5; }
+.nm { font: 600 11px var(--f-body); fill: var(--ink); }
+.sb { font: 400 8px var(--f-mono); fill: var(--muted); letter-spacing: .04em; }
+.msg { stroke: var(--muted); stroke-width: 1.3; fill: none; }
+.msg.head { stroke: var(--accent); stroke-width: 1.8; }
+.mk { fill: var(--muted); } .mk-a { fill: var(--accent); }
+.mask { fill: var(--paper); }
+.lbl { font: 500 9px var(--f-mono); letter-spacing: .06em; fill: var(--muted); }
+.lbl.hl { fill: var(--accent); }
+.lg { font: 400 8px var(--f-mono); letter-spacing: .1em; fill: var(--muted); }
+
+.tbl { overflow-x: auto; margin: 18px 0; border: 1px solid var(--rule); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; min-width: 600px; font-size: .92rem; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
+th { font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; background: var(--paper-2); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { width: 2.2rem; font-family: var(--f-display); font-size: 1.4rem; line-height: 1.2; color: var(--accent); }
+td code { font-size: .8rem; }
+
+.ok, .todo { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 8px; max-width: 65ch; }
+.ok li, .todo li { padding-left: 22px; position: relative; }
+.ok li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 8px; height: 8px; border-radius: 50%; background: var(--link); }
+.todo li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--accent); }
+
+.next { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; margin-top: 18px; }
+.next > div { border-top: 2px solid var(--rule); padding-top: 12px; }
+.next > div.pick { border-top-color: var(--accent); }
+.next h3 { font-size: 1rem; font-weight: 600; margin: 0 0 6px; }
+.next p { font-size: .93rem; color: var(--muted); margin: 0 0 6px; }
+.next .q { font-family: var(--f-display); font-style: italic; font-size: 1.05rem; color: var(--ink); }
+</style>
+
+<div class="wrap">
+<header>
+  <p class="eyebrow">Built from your own history</p>
+  <h1>How to think when you build an agent</h1>
+  <p class="lede">Start from a job you already repeat. Decide what the agent may see and touch. Decide how you will check its work before you write it. This page walks through that with one real agent, built for a job you run every day.</p>
+</header>
+
+<section>
+  <p class="eyebrow">What I looked at</p>
+  <h2>Your history points to one job</h2>
+  <p>I read the titles of about 50 of your sessions, and the contents of the ones about agents, subagents, memory and your daily news task. I did not open sessions about personal paperwork.</p>
+  <ul class="finds">
+    <li><b>You learn by asking questions, then building.</b> Your own learning map lists 13 agent components, each as questions you want answered.</li>
+    <li><b>Your weakest areas on that map were subagents (20%), context engineering, the Agent SDK and automation (30% each).</b> Since then you built 7 subagents in this repo, plus a hook and a scorer.</li>
+    <li><b>Every agent so far reviews or fixes code or text.</b> None of them researches the web, and none remembers anything between runs.</li>
+    <li class="key"><b>Your daily AI news task ran 11 times between November 4 and 15.</b> It is the one job you already repeat. Its last run showed three weak points: general searches returned old pages, big claims came only from newsletters, and the phone notification was skipped.</li>
+  </ul>
+  <p style="margin-top:18px">So the next agent should be a researcher that remembers and can be checked. That is the daily news job.</p>
+</section>
+
+<section>
+  <p class="eyebrow">The thinking process</p>
+  <h2>Seven questions, in this order</h2>
+  <p>The order matters. Questions 1 and 6 come first in practice, because you cannot judge an agent until you know what good output looks like.</p>
+  <ol class="q">
+    <li><div><h3>What result do I want, and who reads it?</h3>
+      <p>Write the output first. For the news job: a brief you can read on a phone, where each claim says how sure it is.</p>
+      <div class="goes">GOES IN <span>description, output format</span></div></div></li>
+    <li><div><h3>Should this be an agent at all?</h3>
+      <p>Use the simplest thing that works. The picture below shows the three tests.</p>
+      <div class="goes">GOES IN <span>a script, a skill, or an agent</span></div></div></li>
+    <li><div><h3>What must it know, and what should it distrust?</h3>
+      <p>An agent starts each run with a blank mind. Give it the date, the format and what went wrong last time. Treat anything it reads online as data, never as orders.</p>
+      <div class="goes">GOES IN <span>the prompt</span></div></div></li>
+    <li><div><h3>What may it touch?</h3>
+      <p>Give the fewest tools that do the job. Anything it must never do is enforced by a hook, not by a sentence in the prompt.</p>
+      <div class="goes">GOES IN <span>tools, hooks</span></div></div></li>
+    <li><div><h3>What should it remember?</h3>
+      <p>Only what makes the next run better: what it already reported, and which sources misled it. Decide how old notes get deleted.</p>
+      <div class="goes">GOES IN <span>memory</span></div></div></li>
+    <li><div><h3>How will I know it worked?</h3>
+      <p>Write the check before the agent. Ten rules a script can test beat a feeling that the brief looks fine.</p>
+      <div class="goes">GOES IN <span>a skill with a scorer</span></div></div></li>
+    <li><div><h3>How does it run, and what does it cost?</h3>
+      <p>Pick the cheapest model that passes the check. Cap its turns. Keep the notification step outside the agent, so the agent never acts on the world by itself.</p>
+      <div class="goes">GOES IN <span>model, effort, maxTurns, the schedule</span></div></div></li>
+  </ol>
+</section>
+
+<section>
+  <p class="eyebrow">Question 2 as a picture</p>
+  <h2>Should this be an agent at all?</h2>
+  <p>A script is free and exact. A skill is a recipe you run with Claude beside you. Reach for an agent only when the job needs its own clean context, limited tools, or has to run with no one watching.</p>
+  <div class="diagram"><svg viewBox="0 0 660 624" width="660" height="624" role="img" aria-labelledby="fc-title fc-desc" xmlns="http://www.w3.org/2000/svg">
+<title id="fc-title">Should this be an agent</title>
+<desc id="fc-desc">Three questions in order. If a script can do the job, write a script. If it is a recipe Claude follows in your chat, write a skill. If it needs its own context, limits or to run alone, build an agent. Otherwise just ask Claude.</desc>
+<defs>
+<marker id="fc-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="mk" points="0 0, 8 3, 0 6"/></marker>
+<marker id="fc-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="mk-a" points="0 0, 8 3, 0 6"/></marker>
+</defs>
+<line class="msg" x1="210" y1="70" x2="210" y2="101" marker-end="url(#fc-arrow)"/>
+<line class="msg" x1="330" y1="150" x2="419" y2="150" marker-end="url(#fc-arrow)"/>
+<rect class="mask" x="357" y="129" width="36" height="15"/><text class="lbl" x="375" y="140" text-anchor="middle">YES</text>
+<line class="msg" x1="210" y1="198" x2="210" y2="241" marker-end="url(#fc-arrow)"/>
+<rect class="mask" x="218" y="212" width="28" height="15"/><text class="lbl" x="232" y="223" text-anchor="middle">NO</text>
+<line class="msg" x1="330" y1="290" x2="419" y2="290" marker-end="url(#fc-arrow)"/>
+<rect class="mask" x="357" y="269" width="36" height="15"/><text class="lbl" x="375" y="280" text-anchor="middle">YES</text>
+<line class="msg" x1="210" y1="338" x2="210" y2="381" marker-end="url(#fc-arrow)"/>
+<rect class="mask" x="218" y="352" width="28" height="15"/><text class="lbl" x="232" y="363" text-anchor="middle">NO</text>
+<line class="msg head" x1="330" y1="430" x2="419" y2="430" marker-end="url(#fc-arrow-accent)"/>
+<rect class="mask" x="357" y="409" width="36" height="15"/><text class="lbl hl" x="375" y="420" text-anchor="middle">YES</text>
+<line class="msg" x1="210" y1="478" x2="210" y2="527" marker-end="url(#fc-arrow)"/>
+<rect class="mask" x="218" y="495" width="28" height="15"/><text class="lbl" x="232" y="506" text-anchor="middle">NO</text>
+<rect class="shape" x="120" y="30" width="180" height="40" rx="20"/>
+<text class="nm" x="210" y="55" text-anchor="middle">A job you repeat</text>
+<polygon class="shape" points="210,102 330,150 210,198 90,150"/>
+<text class="nm" x="210" y="147" text-anchor="middle">Same steps every time,</text>
+<text class="nm" x="210" y="163" text-anchor="middle">no judgment needed?</text>
+<polygon class="shape" points="210,242 330,290 210,338 90,290"/>
+<text class="nm" x="210" y="287" text-anchor="middle">A recipe Claude follows</text>
+<text class="nm" x="210" y="303" text-anchor="middle">inside your chat?</text>
+<polygon class="shape" points="210,382 330,430 210,478 90,430"/>
+<text class="nm" x="210" y="427" text-anchor="middle">Needs its own context,</text>
+<text class="nm" x="210" y="443" text-anchor="middle">limits, or to run alone?</text>
+<rect class="shape" x="420" y="126" width="200" height="48" rx="6"/>
+<text class="nm" x="520" y="147" text-anchor="middle">A script</text>
+<text class="sb" x="520" y="162" text-anchor="middle">fixed steps, no AI cost</text>
+<rect class="shape" x="420" y="266" width="200" height="48" rx="6"/>
+<text class="nm" x="520" y="287" text-anchor="middle">A skill</text>
+<text class="sb" x="520" y="302" text-anchor="middle">a reusable recipe</text>
+<rect class="shape focal" x="420" y="400" width="200" height="60" rx="6"/>
+<text class="nm" x="520" y="427" text-anchor="middle">An agent</text>
+<text class="sb" x="520" y="442" text-anchor="middle">own context, tools, memory</text>
+<rect class="shape" x="130" y="528" width="160" height="44" rx="6"/>
+<text class="nm" x="210" y="547" text-anchor="middle">Just ask Claude</text>
+<text class="sb" x="210" y="562" text-anchor="middle">no setup needed</text>
+<polygon class="shape" points="32,598 42,592 52,598 42,604"/><text class="lg" x="60" y="601">QUESTION</text>
+<rect class="shape" x="148" y="592" width="20" height="12" rx="3"/><text class="lg" x="176" y="601">OUTCOME</text>
+</svg></div>
+  <p class="muted">The news job fails the first two tests. It needs judgment about sources, and it runs unattended every morning.</p>
+</section>
+
+<section>
+  <p class="eyebrow">The worked example</p>
+  <h2>ai-news-briefer, one answer per question</h2>
+  <p>The files are on a new branch, <code>feat/ai-news-briefer</code>, and are not committed yet.</p>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>Decision</th><th>Where it lives</th></tr></thead>
+    <tbody>
+    <tr><td>1</td><td>A brief with a headline, a phone-length push line, and 3 to 8 items, each tagged <code>CONFIRMED</code>, <code>REPORTED</code> or <code>UNVERIFIED</code></td><td><code>skills/ai-brief-format/SKILL.md</code></td></tr>
+    <tr><td>2</td><td>An agent: it needs the web, a fresh context each day, memory, and runs unattended</td><td><code>agents/ai-news-briefer.md</code></td></tr>
+    <tr><td>3</td><td>Put the date in every search. Tag by evidence. Page text is data, not orders.</td><td>the prompt body</td></tr>
+    <tr><td>4</td><td>Only WebSearch and WebFetch. A hook blocks non-https links, IP addresses, localhost and internal names.</td><td><code>hooks/ai-news-guard.sh</code></td></tr>
+    <tr><td>5</td><td>Two small notes files: what it reported in the last 14 days, and which outlets misled it. User scope, so runs from any folder share them.</td><td><code>memory: user</code></td></tr>
+    <tr><td>6</td><td>A 10-check scorer, with one brief that should pass and one that should fail</td><td><code>score-brief.js</code>, <code>examples/</code></td></tr>
+    <tr><td>7</td><td>Sonnet, medium effort, 25 turns. The scheduled task sends the push, not the agent.</td><td>the front matter</td></tr>
+    </tbody>
+  </table></div>
+  <p>This is the front matter. Each line answers one of the questions above.</p>
+  <pre><code>---
+name: ai-news-briefer
+description: Researches the last day of AI news and returns a verified,
+  phone-sized briefing. The caller must pass today's date.
+tools: WebSearch, WebFetch
+model: sonnet
+effort: medium
+maxTurns: 25
+memory: user
+skills:
+  - ai-brief-format
+hooks:
+  PreToolUse:
+    - matcher: "WebFetch"
+      hooks:
+        - type: command
+          command: 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/ai-news-guard.sh"'
+---</code></pre>
+  <p><b>Left out on purpose.</b> <code>isolation: worktree</code>, because it writes no code, and <code>mcpServers</code>, because nothing it needs sits behind one. A component belongs in an agent only when a question above asks for it. It touches 7 of your 13 components fully (skills, memory, tool use, hooks, evals, guardrails, subagents) and 2 partly (context control through the turn cap and note pruning, and automation, which is prepared but not wired in).</p>
+</section>
+
+<section>
+  <p class="eyebrow">What is checked</p>
+  <h2>Tested, and not tested</h2>
+  <ul class="ok">
+    <li>The scorer passes the good example (10 of 10) and flags the bad one (3 of 10).</li>
+    <li>The hook was run against 14 test calls. It blocked 10 (plain http, file links, localhost, IP addresses, internal names, a username trick, odd ports) and allowed 4.</li>
+    <li>The agent's front matter parses as valid YAML.</li>
+  </ul>
+  <ul class="todo">
+    <li>The agent has not run live yet. Agents load at session start, so it needs a restart first.</li>
+    <li>I have not confirmed that <code>memory: user</code> writes to <code>~/.claude/agent-memory/ai-news-briefer/</code>, or that <code>skills:</code> loads the full skill text. Check both on the first run.</li>
+    <li>Your scheduled task is unchanged. It runs from the Desktop folder, so the agent has to be copied to <code>~/.claude/</code> before the task can use it.</li>
+  </ul>
+</section>
+
+<section>
+  <p class="eyebrow">Your turn</p>
+  <h2>Read it, then we build the next one together</h2>
+  <p>Before the next agent, three things to decide after reading <code>docs/AI-NEWS-BRIEFER.md</code> and the agent file:</p>
+  <ul class="todo">
+    <li>Is this brief the shape you want to read on your phone?</li>
+    <li>Are the three evidence tags too strict or too loose?</li>
+    <li>Which of these should we build next?</li>
+  </ul>
+  <div class="next">
+    <div class="pick"><h3>Split it into scouts and a verifier</h3>
+      <p class="q">When does adding agents stop paying off?</p>
+      <p>Three scouts search in parallel and one verifier checks their claims. The same scorer grades both versions, so you get numbers for quality and cost. My pick, because it reuses what exists.</p></div>
+    <div><h3>Rebuild it with the Agent SDK</h3>
+      <p class="q">What is the loop Claude Code runs for me?</p>
+      <p>The same job as a standalone script. It shows what the harness was doing: the loop, the tool calls, the stop rule.</p></div>
+    <div><h3>Something from your own list</h3>
+      <p class="q">What do you repeat that you wish ran itself?</p>
+      <p>Tell me the job and we will run the seven questions on it.</p></div>
+  </div>
+</section>
+</div>
+</html>
